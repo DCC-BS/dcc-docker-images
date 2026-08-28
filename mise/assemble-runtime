@@ -1,0 +1,65 @@
+#!/bin/bash
+# Assemble a minimal /runtime from the mise-managed toolchain, stripping
+# everything a production container does not need. Run inside the build stage
+# AFTER `mise install` has populated /mise/installs.
+#
+# Usage:
+#   assemble-runtime python   # FastAPI/uv apps (standalone varlock binary)
+#   assemble-runtime node     # Nuxt/node apps (npm varlock package)
+#
+# The runtime is written to /runtime and the app's venv (if any) is repointed
+# at the relocated python so the python version lives in exactly one place
+# (pyproject.toml / mise.toml), never hardcoded here.
+set -euo pipefail
+
+RUNTIME_DIR="${RUNTIME_DIR:-/runtime}"
+TYPE="${1:?usage: assemble-runtime <python|node>}"
+
+case "$TYPE" in
+python)
+    PYTHON_DIR="$(ls -d /uv-python/cpython-3.13-* | head -1)"
+    mkdir -p "$RUNTIME_DIR/python" "$RUNTIME_DIR/varlock"
+    cp -rL "$PYTHON_DIR/bin" "$RUNTIME_DIR/python/"
+    cp -rL "$PYTHON_DIR/lib" "$RUNTIME_DIR/python/"
+    cp -rL "$PYTHON_DIR/share" "$RUNTIME_DIR/python/"
+
+    # Drop headers, Tcl/Tk, and the interactive-only bits a web server never uses
+    rm -rf "$RUNTIME_DIR/python/include"
+    rm -rf "$RUNTIME_DIR/python/lib"/tcl9* "$RUNTIME_DIR/python/lib"/tk9* \
+        "$RUNTIME_DIR/python/lib"/itcl* "$RUNTIME_DIR/python/lib"/thread*
+    rm -f "$RUNTIME_DIR/python/lib"/libtcl9*.so "$RUNTIME_DIR/python/lib"/libtcl9tk9*.so \
+        "$RUNTIME_DIR/python/lib"/libpython*.so*
+    rm -rf "$RUNTIME_DIR/python/share/terminfo"
+    rm -f "$RUNTIME_DIR/python/bin"/idle* "$RUNTIME_DIR/python/bin"/pydoc* \
+        "$RUNTIME_DIR/python/bin"/pip*
+
+    # Standalone varlock binary (github:dmno-dev/varlock)
+    VARLOCK_DIR="$(ls -d /mise/installs/github-dmno-dev-varlock/latest | head -1)"
+    cp "$VARLOCK_DIR"/varlock "$VARLOCK_DIR"/varlock-local-encrypt "$RUNTIME_DIR/varlock/"
+    chmod +x "$RUNTIME_DIR/varlock/varlock" "$RUNTIME_DIR/varlock/varlock-local-encrypt"
+
+    # Repoint the venv's python symlink and pyvenv.cfg at the relocated runtime
+    if [ -f /app/.venv/bin/python ]; then
+        rm /app/.venv/bin/python
+        ln -s "$RUNTIME_DIR/python/bin/python3.13" /app/.venv/bin/python
+        sed -i "s|^home = .*|home = $RUNTIME_DIR/python/bin|" /app/.venv/pyvenv.cfg
+    fi
+    ;;
+node)
+    mkdir -p "$RUNTIME_DIR/node" "$RUNTIME_DIR/varlock"
+    cp -r /mise/installs/node/lts/bin /mise/installs/node/lts/lib /mise/installs/node/lts/share "$RUNTIME_DIR/node/"
+
+    # Drop headers, npm/corepack (package management only), and man/docs
+    rm -rf "$RUNTIME_DIR/node/include"
+    rm -rf "$RUNTIME_DIR/node/lib/node_modules/npm" "$RUNTIME_DIR/node/lib/node_modules/corepack"
+    rm -f "$RUNTIME_DIR/node/bin/npm" "$RUNTIME_DIR/node/bin/npx" "$RUNTIME_DIR/node/bin/corepack"
+    rm -rf "$RUNTIME_DIR/node/share/man" "$RUNTIME_DIR/node/share/doc"
+
+    # npm varlock package (npm:varlock)
+    cp -r /mise/installs/npm-varlock/latest/node_modules/varlock/* "$RUNTIME_DIR/varlock/"
+    ;;
+*)
+    echo "assemble-runtime: unknown type '$TYPE' (expected python|node)" >&2
+    exit 1
+    ;;
+esac
