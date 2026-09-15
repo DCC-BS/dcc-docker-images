@@ -17,7 +17,7 @@ TYPE="${1:?usage: assemble-runtime <python|node>}"
 
 case "$TYPE" in
 python)
-    PYTHON_DIR="$(ls -d /uv-python/cpython-3.13-* | head -1)"
+    PYTHON_DIR="$(ls -d /uv-python/cpython-* | head -1)"
     mkdir -p "$RUNTIME_DIR/python" "$RUNTIME_DIR/varlock"
     cp -rL "$PYTHON_DIR/bin" "$RUNTIME_DIR/python/"
     cp -rL "$PYTHON_DIR/lib" "$RUNTIME_DIR/python/"
@@ -41,7 +41,7 @@ python)
     # Repoint the venv's python symlink and pyvenv.cfg at the relocated runtime
     if [ -f /app/.venv/bin/python ]; then
         rm /app/.venv/bin/python
-        ln -s "$RUNTIME_DIR/python/bin/python3.13" /app/.venv/bin/python
+        ln -s "$RUNTIME_DIR/python/bin/python3" /app/.venv/bin/python
         sed -i "s|^home = .*|home = $RUNTIME_DIR/python/bin|" /app/.venv/pyvenv.cfg
     fi
     ;;
