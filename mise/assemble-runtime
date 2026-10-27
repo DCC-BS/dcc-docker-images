@@ -48,8 +48,11 @@ python)
     fi
     ;;
 node)
+    # The node version the app's mise.toml pins. Not the "lts" alias: mise only
+    # creates that link for an LTS line, so a current release (e.g. 26) has none.
+    NODE_DIR="$(mise where node)"
     mkdir -p "$RUNTIME_DIR/node" "$RUNTIME_DIR/varlock"
-    cp -r /mise/installs/node/lts/bin /mise/installs/node/lts/lib /mise/installs/node/lts/share "$RUNTIME_DIR/node/"
+    cp -rL "$NODE_DIR/bin" "$NODE_DIR/lib" "$NODE_DIR/share" "$RUNTIME_DIR/node/"
 
     # Drop headers, npm/corepack (package management only), and man/docs
     rm -rf "$RUNTIME_DIR/node/include"
@@ -59,7 +62,7 @@ node)
 
     # Optional npm varlock package (npm:varlock)
     if [ -d /mise/installs/npm-varlock ]; then
-        cp -r /mise/installs/npm-varlock/latest/node_modules/varlock/* "$RUNTIME_DIR/varlock/"
+        cp -r "$(mise where npm:varlock)"/node_modules/varlock/* "$RUNTIME_DIR/varlock/"
     fi
     ;;
 *)
