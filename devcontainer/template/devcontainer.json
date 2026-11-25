@@ -21,10 +21,12 @@
     // user_home_t label, which container_t is denied regardless of uid. Opt the
     // container out of SELinux confinement.
     "runArgs": ["--security-opt", "label=disable"],
-    // Stages personal coding-agent state on the HOST (opt-in per user, no-op
-    // when nothing is staged) and mounts it read-only. Teammates without
-    // staged state get an empty dir and nothing is shared.
-    "initializeCommand": "bash .devcontainer/scripts/host-sync.sh",
+    // Stages personal coding-agent state on the HOST (opt-in per user) and
+    // mounts it read-only. The staging script lives in the USER's home, not
+    // the repo: create ~/.config/devcontainer/host-sync.sh to opt in (see
+    // ../README.md for the omp example). Without it this is a no-op: the
+    // staging dir exists, stays empty, and nothing personal is shared.
+    "initializeCommand": "mkdir -p \"$HOME/.cache/devcontainer-agent-state\" && if [ -f \"$HOME/.config/devcontainer/host-sync.sh\" ]; then bash \"$HOME/.config/devcontainer/host-sync.sh\"; fi",
     "mounts": [
         "source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,type=bind",
         "source=${localEnv:HOME}/.cache/devcontainer-agent-state,target=/mnt/agent-state,type=bind,readonly"

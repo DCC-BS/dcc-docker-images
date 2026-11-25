@@ -40,23 +40,52 @@ devcontainer/
   itself has nothing repo-specific. A repo needing extra bootstrap steps
   points `postCreateCommand` at its own script that calls this one first.
 
+## Personal agent state (opt-in, user-side)
+
+The container is agent-neutral: nothing personal is staged unless the user
+opts in. The opt-in script lives in the **user's home**, not the repo —
+create `~/.config/devcontainer/host-sync.sh` (runs on the host before the
+container starts, via `initializeCommand`). Example for omp (oh-my-pi):
+
+```bash
+#!/usr/bin/env bash
+# Stage personal agent state for dev containers. Copy config files only,
+# never sessions/history. Add one block per agent you use.
+set -euo pipefail
+STAGING="${HOME}/.cache/devcontainer-agent-state"
+mkdir -p "$STAGING"
+
+# omp (oh-my-pi): settings, model catalog, provider keys
+if [ -d "$HOME/.omp/agent" ]; then
+    mkdir -p "$STAGING/omp"
+    for f in config.yml models.db models.db-wal models.db-shm agent.db agent.db-wal agent.db-shm; do
+        [ -f "$HOME/.omp/agent/$f" ] && cp "$HOME/.omp/agent/$f" "$STAGING/omp/"
+    done
+fi
+```
+
+Without this file the staging dir is created empty and the container works
+unchanged. For another agent, add a block that copies its config files into
+`$STAGING/<agent>/`; the image's `/usr/local/bin/sync-agent` copies whatever
+appears under `$STAGING` into the container home (checksum-guarded, re-runs on
+every start and every shell start).
+
 ## Adopting in a repo
 
 The devcontainer spec has no include/extends, so each repo carries its own
-`.devcontainer/` — but only what genuinely differs per repo:
+`.devcontainer/` — but it is a single file:
 
 1. Copy `template/devcontainer.json` to `<repo>/.devcontainer/devcontainer.json`
    and fill the `REPO-SPECIFIC` fields (name, forwardPorts, extensions; the
    `PROTON_PASS_KEY_PROVIDER` env only if the repo uses pass-cli). Everything
    else — image, mounts, `initializeCommand`, `runArgs`, lifecycle commands —
    stays as-is.
-2. Add `<repo>/.devcontainer/scripts/host-sync.sh` — the per-user opt-in list
-   of agent state to stage on the host (omp by default; add blocks for other
-   agents). No-op when empty: safe for teammates. This one runs on the host,
-   so it cannot come from the image.
-3. Nothing else: no Dockerfile, no setup script. Creating the workspace pulls
-   the shared image; `postCreateCommand` runs the baked `setup-workspace`,
-   which installs the repo's tools from its `mise.toml`.
+
+Nothing else: no Dockerfile, no setup script, no host script. Creating the
+workspace pulls the shared image; `postCreateCommand` runs the baked
+`setup-workspace`, which installs the repo's tools from its `mise.toml`; each
+user stages their own agent state from `~/.config/devcontainer/host-sync.sh`
+if they have one.
 
 Why this split: the image carries what is identical for every repo; `mise.toml`
 carries what is repo-specific (tool versions, OS packages); the user's own
