@@ -32,7 +32,7 @@ devcontainer/
 - `/usr/local/bin/sync-agent`: copies staged personal coding-agent state from
   the read-only `/mnt/agent-state` mount into the container home
   (checksum-guarded, no-op when nothing is staged — safe for teammates who
-  use no agent state)
+  use no agent state). Supported staging dirs: `omp`, `claude`, `opencode`, `pi`.
 - `/usr/local/bin/setup-workspace`: create-time bootstrap run by
   `postCreateCommand` — `mise trust`, `mise install`,
   `mise bootstrap packages apply`, GitHub host key, agent sync. All steps key
@@ -50,18 +50,42 @@ container starts, via `initializeCommand`). Example for omp (oh-my-pi):
 ```bash
 #!/usr/bin/env bash
 # Stage personal agent state for dev containers. Copy config files only,
-# never sessions/history. Add one block per agent you use.
+# never sessions/history. Delete the blocks for agents you don't use.
 set -euo pipefail
 STAGING="${HOME}/.cache/devcontainer-agent-state"
 mkdir -p "$STAGING"
 
-# omp (oh-my-pi): settings, model catalog, provider keys
-if [ -d "$HOME/.omp/agent" ]; then
-    mkdir -p "$STAGING/omp"
-    for f in config.yml models.db models.db-wal models.db-shm agent.db agent.db-wal agent.db-shm; do
-        [ -f "$HOME/.omp/agent/$f" ] && cp "$HOME/.omp/agent/$f" "$STAGING/omp/"
+# stage <agent> <source-dir> <relative-path>... — skip missing paths.
+# <agent> must match the mapping in the image's sync-agent.sh.
+stage() {
+    local agent="$1" dir="$2"
+    shift 2
+    [ -d "$dir" ] || return 0
+    local rel
+    for rel in "$@"; do
+        [ -e "$dir/$rel" ] || continue
+        mkdir -p "$STAGING/$agent/$(dirname "$rel")"
+        cp -a "$dir/$rel" "$STAGING/$agent/$rel"
     done
-fi
+}
+
+# omp (oh-my-pi): settings, model catalog, provider keys → ~/.omp/agent
+stage omp "$HOME/.omp/agent" \
+    config.yml models.db models.db-wal models.db-shm \
+    agent.db agent.db-wal agent.db-shm
+
+# Claude Code: memory, settings, keybindings, Linux credentials, mcp/onboarding
+# (.claude.json carries mcpServers + onboarding; lives at $HOME)
+stage claude "$HOME/.claude" \
+    CLAUDE.md settings.json keybindings.json .credentials.json
+stage claude "$HOME" .claude.json
+
+# OpenCode: config, credentials, user agents/commands → ~/.config/opencode
+stage opencode "$HOME/.config/opencode" \
+    opencode.json opencode.jsonc auth.json agent command
+
+# pi: global settings + auth → ~/.pi/agent (sessions stay on the host)
+stage pi "$HOME/.pi/agent" settings.json auth.json
 ```
 
 Without this file the staging dir is created empty and the container works
