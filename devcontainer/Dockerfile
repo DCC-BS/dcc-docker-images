@@ -16,6 +16,11 @@ RUN apt-get update \
 # mise system-wide so every user and every shell (interactive or not) finds it.
 RUN curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh -
 
+# GitHub release downloads (bun, node) can be slow; mise's default 30s HTTP
+# timeout aborts `mise install` mid-create. Baked as ENV (not containerEnv in
+# devcontainer.json) because DevPod does not apply containerEnv to containers.
+ENV MISE_HTTP_TIMEOUT=300
+
 # zsh as login shell for root (the remoteUser declared in each app's
 # devcontainer.json). The base image ships oh-my-zsh at /root/.oh-my-zsh; its
 # `mise` plugin runs `eval "$(mise activate zsh)"` for interactive shells.

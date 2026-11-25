@@ -37,11 +37,6 @@
         // Only if the repo uses pass-cli/Proton Pass:
         // "PROTON_PASS_KEY_PROVIDER": "fs"
     },
-    "containerEnv": {
-        // GitHub release downloads (bun, node) can be slow; mise's default 30s
-        // HTTP timeout aborts `mise install` on a slow moment.
-        "MISE_HTTP_TIMEOUT": "300"
-    },
     // REPO-SPECIFIC — ports the app serves
     "forwardPorts": [3000],
     // Create-time bootstrap, baked into the image: mise trust + install +
