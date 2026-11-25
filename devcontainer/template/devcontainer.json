@@ -1,0 +1,54 @@
+{
+    // Canonical devcontainer.json for DCC-BS repos using the shared image
+    // ghcr.io/dcc-bs/dcc-docker-images/devcontainer:24.04 (source:
+    // https://github.com/DCC-BS/dcc-docker-images/tree/main/devcontainer).
+    // The devcontainer spec has no include/extends — every repo carries this
+    // file. Only the fields marked REPO-SPECIFIC differ between repos; copy
+    // this file into <repo>/.devcontainer/devcontainer.json and fill those in.
+    // Also required per repo (see README.md): .devcontainer/scripts/setup.sh
+    // and .devcontainer/scripts/host-sync.sh.
+    // REPO-SPECIFIC
+    "name": "REPLACE-WITH-REPO-NAME",
+    "image": "ghcr.io/dcc-bs/dcc-docker-images/devcontainer:24.04",
+    // Run as root: DevPod's workspace agent and `mise bootstrap packages apply`
+    // (apt) need it. Create workspaces from the git URL so the checkout lives
+    // in a DevPod-managed volume — with a local-folder workspace on rootless
+    // Podman, container writes map to your subuid and pollute the host tree.
+    "remoteUser": "root",
+    "containerUser": "root",
+    "updateRemoteUserUID": false,
+    // SELinux-enforcing hosts (Fedora/RHEL): bind-mounted host files keep their
+    // user_home_t label, which container_t is denied regardless of uid. Opt the
+    // container out of SELinux confinement.
+    "runArgs": ["--security-opt", "label=disable"],
+    // Stages personal coding-agent state on the HOST (opt-in per user, no-op
+    // when nothing is staged) and mounts it read-only. Teammates without
+    // staged state get an empty dir and nothing is shared.
+    "initializeCommand": "bash .devcontainer/scripts/host-sync.sh",
+    "mounts": [
+        "source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,type=bind",
+        "source=${localEnv:HOME}/.cache/devcontainer-agent-state,target=/mnt/agent-state,type=bind,readonly"
+    ],
+    "remoteEnv": {
+        // Forward the host agent; private keys never enter the container.
+        "SSH_AUTH_SOCK": "${localEnv:SSH_AUTH_SOCK}"
+        // Only if the repo uses pass-cli/Proton Pass:
+        // "PROTON_PASS_KEY_PROVIDER": "fs"
+    },
+    // REPO-SPECIFIC — ports the app serves
+    "forwardPorts": [3000],
+    // Installs the toolchain from the repo's mise.toml: `mise install` plus the
+    // OS libraries from [bootstrap.packages] and any repo bootstrap steps.
+    // Each repo owns its copy of scripts/setup.sh (versions live in mise.toml).
+    "postCreateCommand": "bash .devcontainer/scripts/setup.sh",
+    // Re-applies staged agent state on every start (DevPod's dotfiles step runs
+    // after postCreate and re-links user dotfiles over the staged copies). The
+    // script is baked into the image; /etc/zsh/zshenv re-runs it per shell.
+    "postStartCommand": "bash /usr/local/bin/sync-agent",
+    "customizations": {
+        "vscode": {
+            // REPO-SPECIFIC — extensions for this repo's stack
+            "extensions": []
+        }
+    }
+}

@@ -8,6 +8,7 @@ Shared Docker tooling for DCC-BS apps. The goal is to keep the Docker logic in
 ```
 dcc-docker-images/
 ├── mise/          # PRE-BUILT base image (dcc-mise:13-slim) — build once, share
+├── devcontainer/  # PRE-BUILT dev container image + devcontainer.json TEMPLATE for app repos
 ├── fastapi/       # TEMPLATE — copy into FastAPI/uv apps, build in the app repo
 ├── nuxt/          # TEMPLATE — copy into Nuxt/node apps, build in the app repo
 └── README.md
@@ -62,9 +63,18 @@ The base image tag (`13-slim`) matches the Debian release. When you bump the
 base image, rebuild it and re-tag so apps pick up the new `assemble-runtime`
 script and toolchain.
 
+## Dev containers for app repos
+
+`devcontainer/` is the same idea applied to development environments: a
+pre-built image (`ghcr.io/dcc-bs/dcc-docker-images/devcontainer:24.04`) plus a
+canonical `devcontainer.json` template. See
+[`devcontainer/README.md`](devcontainer/README.md) for what the image contains
+and the adoption steps for a repo.
+
 ## Publish
 
 The `.github/workflows/docker-publish.yml` workflow builds and pushes the mise
-base image to `ghcr.io/dcc-bs/dcc-docker-images/mise` on manual dispatch. The
-fastapi/nuxt templates are not published — they are copied into each app and
-built there.
+base image to `ghcr.io/dcc-bs/dcc-docker-images/mise` and the dev container
+image to `ghcr.io/dcc-bs/dcc-docker-images/devcontainer` on manual dispatch.
+The fastapi/nuxt templates are not published — they are copied into each app
+and built there.
