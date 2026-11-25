@@ -5,8 +5,8 @@
     // The devcontainer spec has no include/extends — every repo carries this
     // file. Only the fields marked REPO-SPECIFIC differ between repos; copy
     // this file into <repo>/.devcontainer/devcontainer.json and fill those in.
-    // Also required per repo (see README.md):
-    // .devcontainer/scripts/host-sync.sh (opt-in agent-state staging).
+    // No other per-repo files are required (agent-state staging is user-side:
+    // ~/.config/devcontainer/host-sync.sh, see ../README.md).
     // REPO-SPECIFIC
     "name": "REPLACE-WITH-REPO-NAME",
     "image": "ghcr.io/dcc-bs/dcc-docker-images/devcontainer:24.04",
@@ -36,6 +36,11 @@
         "SSH_AUTH_SOCK": "${localEnv:SSH_AUTH_SOCK}"
         // Only if the repo uses pass-cli/Proton Pass:
         // "PROTON_PASS_KEY_PROVIDER": "fs"
+    },
+    "containerEnv": {
+        // GitHub release downloads (bun, node) can be slow; mise's default 30s
+        // HTTP timeout aborts `mise install` on a slow moment.
+        "MISE_HTTP_TIMEOUT": "300"
     },
     // REPO-SPECIFIC — ports the app serves
     "forwardPorts": [3000],
