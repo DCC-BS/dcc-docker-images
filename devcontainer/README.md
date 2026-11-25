@@ -94,6 +94,34 @@ unchanged. For another agent, add a block that copies its config files into
 appears under `$STAGING` into the container home (checksum-guarded, re-runs on
 every start and every shell start).
 
+### Machines without the agent installed (host-free workflow)
+
+The staging flow assumes the agent's state originates on the host. On a machine
+where the agent only lives inside dev containers, split the state by class —
+the two classes have opposite sharing semantics and different homes:
+
+| Class | Examples | Source of truth |
+|---|---|---|
+| Declarative config | omp `config.yml`, pi `settings.json`, OpenCode `opencode.json`, Claude `settings.json`/`CLAUDE.md` | **git — your dotfiles repo** |
+| Mutable runtime state | omp `models.db`/`agent.db` (sqlite), credential caches | **per-machine named volume** |
+
+- **Config → dotfiles repo.** DevPod clones your dotfiles *inside* every
+  container on every `up`, on any machine — no host agent needed. This path
+  already works today (it is how `dot_omp/config.yml` reaches the container).
+  Never commit credentials: fetch `auth.json`/`.credentials.json` at first
+  shell from a secret store instead (e.g. Proton Pass via pass-cli).
+- **Mutable state → shared named volume.** Create a Podman/Docker named volume
+  (e.g. `devpod-agent-state`) and mount it read-write into your workspaces; it
+  survives workspace recreation and is shared by every container on that
+  machine, with nothing stored on the host. First use seeds it.
+- **Never sync the sqlite state between containers** (no container → host
+  reverse-sync): sqlite/WAL snapshots traded between live writers are
+  last-writer-wins with corruption risk. A volume mounted by one writer at a
+  time is the safe shape.
+- omp-specific: if `models.db`/`agent.db` turn out to be rebuildable from
+  `config.yml` on first run, the volume shrinks to nothing and dotfiles +
+  secret store cover the whole workflow.
+
 ## Adopting in a repo
 
 The devcontainer spec has no include/extends, so each repo carries its own
@@ -114,6 +142,35 @@ if they have one.
 Why this split: the image carries what is identical for every repo; `mise.toml`
 carries what is repo-specific (tool versions, OS packages); the user's own
 agent state is opt-in per user and never shared by default.
+
+## Creating workspaces — use the git URL
+
+```sh
+devpod up git@github.com:OWNER/REPO.git --ide vscode   # or: --ide zed
+```
+
+DevPod clones the repo into a container-managed volume; the host checkout is
+never touched.
+
+**Never create the workspace from the local folder** (`devpod up .`) with a
+rootless Podman provider: DevPod bind-mounts the working tree and its
+create-time sync writes through the mount as container-root, which maps to
+your *subuid* — not your user. Every file it touches becomes unwritable on the
+host, and every later `up` of that workspace re-syncs the mount. If it already
+happened:
+
+```sh
+devpod delete <workspace>                          # remove the workspace
+sudo chown -R $(id -un):$(id -gn) <repo>           # reclaim the host files
+```
+
+The IDE is independent of the content source and can be attached or changed
+afterwards on an existing workspace (named after the repo folder):
+
+```sh
+devpod up <workspace> --ide zed      # reopen with Zed
+devpod ide use zed <workspace>       # or make it the default, then `devpod up <workspace>`
+```
 
 ## Publishing
 
