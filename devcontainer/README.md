@@ -33,6 +33,9 @@ devcontainer/
   the read-only `/mnt/agent-state` mount into the container home
   (checksum-guarded, no-op when nothing is staged — safe for teammates who
   use no agent state). Supported staging dirs: `omp`, `claude`, `opencode`, `pi`.
+- Docker CLI + compose plugin (pinned): used against a host podman/docker
+  socket mounted at `/var/run/docker.sock` by repos that need it (sibling
+  containers; no daemon inside this image)
 - `/usr/local/bin/setup-workspace`: create-time bootstrap run by
   `postCreateCommand` — `mise trust`, `mise install`,
   `mise bootstrap packages apply`, GitHub host key, agent sync. All steps key

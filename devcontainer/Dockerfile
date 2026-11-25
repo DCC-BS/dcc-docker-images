@@ -21,6 +21,18 @@ RUN curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh -
 # devcontainer.json) because DevPod does not apply containerEnv to containers.
 ENV MISE_HTTP_TIMEOUT=300
 
+# Docker CLI + compose plugin, pinned: they talk to the HOST podman/docker
+# socket that repos mount at /var/run/docker.sock (sibling containers — no
+# daemon runs inside this image). Repos whose devcontainer.json mount the
+# socket get `docker` and `docker compose` for free; others are unaffected.
+RUN curl -fsSL "https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz" \
+        | tar -xz -C /usr/local/bin --strip-components=1 docker/docker \
+    && mkdir -p /usr/local/lib/docker/cli-plugins \
+    && curl -fsSL "https://github.com/docker/compose/releases/download/v2.34.0/docker-compose-linux-x86_64" \
+        -o /usr/local/lib/docker/cli-plugins/docker-compose \
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose \
+    && docker --version && docker compose version
+
 # zsh as login shell for root (the remoteUser declared in each app's
 # devcontainer.json). The base image ships oh-my-zsh at /root/.oh-my-zsh; its
 # `mise` plugin runs `eval "$(mise activate zsh)"` for interactive shells.

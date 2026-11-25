@@ -30,6 +30,11 @@
     "mounts": [
         "source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,type=bind",
         "source=${localEnv:HOME}/.cache/devcontainer-agent-state,target=/mnt/agent-state,type=bind,readonly"
+        // Repos needing docker/compose in the container: mount the host
+        // podman socket (enable with: systemctl --user enable --now podman.socket).
+        // The image ships the docker CLI + compose plugin; containers created
+        // through it run as SIBLINGS on the host.
+        // , "source=${localEnv:XDG_RUNTIME_DIR}/podman/podman.sock,target=/var/run/docker.sock,type=bind"
     ],
     "remoteEnv": {
         // Forward the host agent; private keys never enter the container.
