@@ -172,6 +172,24 @@ devpod up <workspace> --ide zed      # reopen with Zed
 devpod ide use zed <workspace>       # or make it the default, then `devpod up <workspace>`
 ```
 
+Two naming/caching gotchas when creating from `URL@branch`:
+
+- The workspace is named after the **branch** segment (`URL@features/foo` →
+  workspace `foo`). If a workspace with that name already exists, DevPod does
+  **not** create a new one — it re-targets the existing workspace's source and
+  rebuilds in place. Deleting the workspace first avoids surprise takeovers.
+- `devpod delete` does **not** purge DevPod's content cache under
+  `~/.devpod/agent/contexts/default/workspaces/<name>/content`. Recreating a
+  same-named workspace can then check out a **stale clone of a different repo**
+  (branch names collide across repos, so the cache "fits"). Purge it manually
+  before recreating for another repo:
+
+  ```sh
+  podman run --rm --security-opt label=disable \
+      -v ~/.devpod/agent/contexts/default/workspaces/<name>:/c alpine:3 \
+      sh -c 'rm -rf /c/* /c/.[!.]*'
+  ```
+
 ## Publishing
 
 Run the `Build and Publish Docker Image` workflow (`workflow_dispatch`). It
