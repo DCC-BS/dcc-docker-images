@@ -28,5 +28,6 @@ COPY zshrc /root/.zshrc
 # the user's dotfiles after each `up`, and the staged copy in /mnt/agent-state
 # must win (see sync-agent.sh and the adopting repo's host-sync.sh).
 COPY sync-agent.sh /usr/local/bin/sync-agent
+COPY setup-workspace.sh /usr/local/bin/setup-workspace
 RUN printf 'export HOME="${HOME:-/root}"\nexport PATH="/usr/local/bin:/root/.local/share/mise/shims:$PATH"\n' > /etc/zsh/zshenv \
     && printf 'test -d /mnt/agent-state && /usr/local/bin/sync-agent >/dev/null 2>&1 || true\n' >> /etc/zsh/zshenv

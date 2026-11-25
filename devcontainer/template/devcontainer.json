@@ -5,8 +5,8 @@
     // The devcontainer spec has no include/extends — every repo carries this
     // file. Only the fields marked REPO-SPECIFIC differ between repos; copy
     // this file into <repo>/.devcontainer/devcontainer.json and fill those in.
-    // Also required per repo (see README.md): .devcontainer/scripts/setup.sh
-    // and .devcontainer/scripts/host-sync.sh.
+    // Also required per repo (see README.md):
+    // .devcontainer/scripts/host-sync.sh (opt-in agent-state staging).
     // REPO-SPECIFIC
     "name": "REPLACE-WITH-REPO-NAME",
     "image": "ghcr.io/dcc-bs/dcc-docker-images/devcontainer:24.04",
@@ -37,10 +37,13 @@
     },
     // REPO-SPECIFIC — ports the app serves
     "forwardPorts": [3000],
-    // Installs the toolchain from the repo's mise.toml: `mise install` plus the
-    // OS libraries from [bootstrap.packages] and any repo bootstrap steps.
-    // Each repo owns its copy of scripts/setup.sh (versions live in mise.toml).
-    "postCreateCommand": "bash .devcontainer/scripts/setup.sh",
+    // Create-time bootstrap, baked into the image: mise trust + install +
+    // `mise bootstrap packages apply` + GitHub host key + agent sync — all
+    // driven by THIS repo's mise.toml (tool versions and OS packages are repo
+    // data in mise.toml, not in this file). Needs nothing else per repo. A
+    // repo with extra bootstrap steps gives postCreateCommand its own script
+    // that calls `bash /usr/local/bin/setup-workspace` first.
+    "postCreateCommand": "bash /usr/local/bin/setup-workspace",
     // Re-applies staged agent state on every start (DevPod's dotfiles step runs
     // after postCreate and re-links user dotfiles over the staged copies). The
     // script is baked into the image; /etc/zsh/zshenv re-runs it per shell.
