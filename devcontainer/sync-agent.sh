@@ -63,3 +63,12 @@ if [ -d /mnt/agent-state/pi ]; then
     sync_agent /mnt/agent-state/pi "$HOME/.pi/agent" \
         settings.json auth.json
 fi
+
+# GitHub CLI: preferences (config.yml) + per-host auth tokens (hosts.yml).
+# gh re-reads both on every invocation — no session state involved. gh itself
+# is not baked into the image; repos install it (mise.toml bootstrap packages),
+# and the synced files are already in place when it first runs.
+if [ -d /mnt/agent-state/gh ]; then
+    sync_agent /mnt/agent-state/gh "$HOME/.config/gh" \
+        config.yml hosts.yml
+fi

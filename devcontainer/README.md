@@ -32,7 +32,8 @@ devcontainer/
 - `/usr/local/bin/sync-agent`: copies staged personal coding-agent state from
   the read-only `/mnt/agent-state` mount into the container home
   (checksum-guarded, no-op when nothing is staged — safe for teammates who
-  use no agent state). Supported staging dirs: `omp`, `claude`, `opencode`, `pi`.
+  use no agent state). Supported staging dirs: `omp`, `claude`, `opencode`,
+  `pi`, `gh` (GitHub CLI).
 - Docker CLI + compose plugin (pinned): used against a host podman/docker
   socket mounted at `/var/run/docker.sock` by repos that need it (sibling
   containers; no daemon inside this image)
@@ -89,6 +90,9 @@ stage opencode "$HOME/.config/opencode" \
 
 # pi: global settings + auth → ~/.pi/agent (sessions stay on the host)
 stage pi "$HOME/.pi/agent" settings.json auth.json
+
+# GitHub CLI: preferences + auth token → ~/.config/gh
+stage gh "$HOME/.config/gh" config.yml hosts.yml
 ```
 
 Without this file the staging dir is created empty and the container works
